@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://playcascada.com/sitemap.xml

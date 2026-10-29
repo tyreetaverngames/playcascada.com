@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cascada Song Library – Piano Songs to Play on Your Keyboard</title>
+<meta name="description" content="Play Für Elise, Clair de Lune, Gymnopédie, The Entertainer, Canon in D and more on your computer keyboard, or upload any MIDI file. Free in your browser.">
+<link rel="canonical" href="https://playcascada.com/library.html">
+<meta name="theme-color" content="#050810">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Cascada">
+<meta property="og:title" content="Cascada Song Library – Piano Songs to Play on Your Keyboard"><meta property="og:description" content="Play Für Elise, Clair de Lune, Gymnopédie, The Entertainer, Canon in D and more on your computer keyboard, or upload any MIDI file. Free in your browser.">
+<meta property="og:url" content="https://playcascada.com/library.html"><meta property="og:image" content="https://playcascada.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{ --blue:#1a8fff; --orange:#ff8a2b; --bg:#05060a; --panel:#0b1220; --border:#1d2b44; --dim:#7f93b0; --ok:#22cc66; }
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:radial-gradient(ellipse at 50% -10%,#0b1428,#03050b 70%);color:#cfe3ff;min-height:100vh;
+  font-family:'Share Tech Mono',monospace;-webkit-font-smoothing:antialiased;}
+header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#0a0e1a,#070a12ee);
+  border-bottom:1px solid var(--border);padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;backdrop-filter:blur(6px);}
+.logo{font-family:'Orbitron';font-weight:900;font-size:20px;letter-spacing:3px;color:var(--orange);text-shadow:0 0 16px rgba(255,138,43,.4);}
+.logo small{color:var(--blue);font-size:11px;letter-spacing:2px;margin-left:6px;}
+.sub{font-family:'Rajdhani';font-weight:600;color:var(--dim);font-size:13px;}
+a.back{margin-left:auto;font-family:'Orbitron';font-weight:700;font-size:12px;letter-spacing:1px;text-decoration:none;
+  color:#1a0e02;background:var(--orange);border-radius:8px;padding:9px 16px;}
+.controls{display:flex;gap:10px;align-items:center;padding:16px 22px;flex-wrap:wrap;}
+input#q{flex:1 1 260px;min-width:180px;font-family:'Rajdhani';font-weight:600;font-size:15px;color:#dfe8f4;
+  background:#0a0e1a;border:1px solid var(--border);border-radius:8px;padding:11px 14px;}
+input#q:focus{outline:none;border-color:var(--blue);}
+.fil{display:flex;gap:6px;}
+.fil button{font-family:'Orbitron';font-weight:700;font-size:11px;letter-spacing:1px;color:var(--dim);background:#0a0e1a;
+  border:1px solid var(--border);border-radius:7px;padding:9px 12px;cursor:pointer;}
+.fil button.on{color:var(--orange);border-color:var(--orange);background:rgba(255,138,43,.10);}
+.up{font-family:'Orbitron';font-weight:700;font-size:11px;letter-spacing:1px;color:var(--ok);background:#0a0e1a;
+  border:1px solid rgba(34,204,102,.45);border-radius:7px;padding:9px 13px;cursor:pointer;}
+.up:hover{background:rgba(34,204,102,.10);}
+.count{color:var(--dim);font-size:12px;padding:0 22px 8px;}
+.sechead{font-family:'Orbitron';font-weight:700;font-size:11px;letter-spacing:2px;color:var(--dim);
+  padding:14px 22px 2px;text-transform:uppercase;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding:8px 22px 10px;}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;
+  transition:transform .12s,box-shadow .12s,border-color .12s;}
+.card:hover{transform:translateY(-2px);box-shadow:0 12px 36px #0008;border-color:#2a3a5e;}
+.ctitle{font-family:'Orbitron';font-weight:700;font-size:15px;color:#eaf4ff;line-height:1.25;}
+.ccomp{font-family:'Rajdhani';font-weight:600;font-size:13px;color:var(--blue);}
+.meta{display:flex;gap:10px;align-items:center;font-size:11px;color:var(--dim);flex-wrap:wrap;}
+.stars{color:var(--orange);letter-spacing:1px;font-size:13px;}
+.badge{font-family:'Orbitron';font-size:9px;letter-spacing:1px;color:var(--ok);border:1px solid rgba(34,204,102,.4);
+  border-radius:5px;padding:2px 6px;}
+.tag{font-family:'Orbitron';font-size:9px;letter-spacing:1px;color:var(--blue);border:1px solid rgba(26,143,255,.4);
+  border-radius:5px;padding:2px 6px;text-transform:uppercase;}
+.tiers{display:flex;gap:6px;flex-wrap:wrap;}
+.tier{flex:1 1 0;min-width:74px;background:#0a0e1a;border:1px solid var(--border);border-radius:8px;padding:7px 8px;text-align:center;}
+.tier .tn{font-family:'Orbitron';font-weight:700;font-size:9px;letter-spacing:1px;}
+.tier.core .tn{color:#5af0aa;} .tier.tv .tn{color:#5ab8ff;} .tier.full .tn{color:#ff8a2b;}
+.tier .tc{font-size:10px;color:var(--dim);margin-top:2px;}
+.tier .ts{color:var(--orange);font-size:10px;}
+.play{margin-top:2px;font-family:'Orbitron';font-weight:700;font-size:13px;letter-spacing:1px;text-decoration:none;text-align:center;
+  color:#1a0e02;background:var(--orange);border:0;border-radius:9px;padding:11px;cursor:pointer;display:block;}
+.empty{padding:60px 22px;text-align:center;color:var(--dim);}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--dim);border-top-color:var(--orange);
+  border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:6px;}
+@keyframes sp{to{transform:rotate(360deg);}}
+footer{padding:20px 22px 40px;color:var(--dim);font-size:11px;line-height:1.6;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">CASCADA <small>// SONG LIBRARY</small></div>
+  <div class="sub">search the library · or upload any MIDI file</div>
+  <a class="back" href="cascada.html">▸ BACK TO GAME</a>
+</header>
+<div class="controls">
+  <input id="q" placeholder="Search the song library…" autocomplete="off">
+  <div class="fil" id="fil">
+    <button data-min="0" class="on">All</button>
+    <button data-min="1">★+</button>
+    <button data-min="3">★★★+</button>
+    <button data-min="4">★★★★+</button>
+  </div>
+  <button class="up" id="uploadBtn" title="Play your own MIDI file">&#8593; UPLOAD MIDI</button>
+  <input type="file" id="uploadInput" accept=".mid,.midi,audio/midi" style="display:none">
+</div>
+<div class="count" id="count"></div>
+<div id="results"></div>
+<footer>
+  Every song is charted on the fly — melody extraction, difficulty rating, and the file's own hand
+  assignment when it has one. Click a song to open it in the game. <b>UPLOAD MIDI</b> plays any
+  <code>.mid</code> file from your computer.
+</footer>
+<script>
+const CATALOG = [{"id":"fur-elise","title":"Für Elise","composer":"Ludwig van Beethoven","tag":"classical","duration":130,"notes":905,"stars":3,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":234,"stars":2,"difficulty":0.27},{"id":"2voice","name":"Two-Voice","notes":334,"stars":2,"difficulty":0.32},{"id":"full","name":"Full","notes":905,"stars":3,"difficulty":0.59}]},{"id":"pathetique-2","title":"Pathétique Sonata · 2nd mvt","composer":"Ludwig van Beethoven","tag":"classical","duration":243,"notes":1629,"stars":4,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":249,"stars":2,"difficulty":0.2},{"id":"2voice","name":"Two-Voice","notes":261,"stars":2,"difficulty":0.24},{"id":"full","name":"Full","notes":1629,"stars":4,"difficulty":0.7}]},{"id":"clair-de-lune","title":"Clair de Lune","composer":"Claude Debussy","tag":"classical","duration":323,"notes":1468,"stars":3,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":293,"stars":2,"difficulty":0.21},{"id":"2voice","name":"Two-Voice","notes":316,"stars":2,"difficulty":0.24},{"id":"full","name":"Full","notes":1468,"stars":3,"difficulty":0.6}]},{"id":"gymnopedie-1","title":"Gymnopédie No. 1","composer":"Erik Satie","tag":"classical","duration":141,"notes":282,"stars":4,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":95,"stars":2,"difficulty":0.21},{"id":"2voice","name":"Two-Voice","notes":113,"stars":2,"difficulty":0.3},{"id":"full","name":"Full","notes":282,"stars":4,"difficulty":0.63}]},{"id":"prelude-in-c","title":"Prelude in C (WTK I)","composer":"J. S. Bach","tag":"classical","duration":140,"notes":549,"stars":3,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":153,"stars":2,"difficulty":0.21},{"id":"2voice","name":"Two-Voice","notes":218,"stars":2,"difficulty":0.29},{"id":"full","name":"Full","notes":549,"stars":3,"difficulty":0.42}]},{"id":"chopin-nocturne-eb","title":"Nocturne in E-flat (Op.9 No.2)","composer":"Frédéric Chopin","tag":"classical","duration":202,"notes":1242,"stars":4,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":229,"stars":2,"difficulty":0.23},{"id":"2voice","name":"Two-Voice","notes":381,"stars":2,"difficulty":0.34},{"id":"full","name":"Full","notes":1242,"stars":4,"difficulty":0.7}]},{"id":"fantaisie-impromptu","title":"Fantaisie-Impromptu","composer":"Frédéric Chopin","tag":"classical","duration":254,"notes":3014,"stars":4,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":308,"stars":2,"difficulty":0.32},{"id":"2voice","name":"Two-Voice","notes":634,"stars":2,"difficulty":0.37},{"id":"full","name":"Full","notes":3014,"stars":4,"difficulty":0.67}]},{"id":"mozart-k545","title":"Piano Sonata No. 16 (K.545)","composer":"W. A. Mozart","tag":"classical","duration":132,"notes":1288,"stars":3,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":272,"stars":2,"difficulty":0.3},{"id":"2voice","name":"Two-Voice","notes":458,"stars":2,"difficulty":0.37},{"id":"full","name":"Full","notes":1288,"stars":3,"difficulty":0.61}]},{"id":"traumerei","title":"Träumerei","composer":"Robert Schumann","tag":"classical","duration":111,"notes":339,"stars":3,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":100,"stars":2,"difficulty":0.18},{"id":"2voice","name":"Two-Voice","notes":126,"stars":2,"difficulty":0.22},{"id":"full","name":"Full","notes":339,"stars":3,"difficulty":0.55}]},{"id":"canon-in-d","title":"Canon in D","composer":"Johann Pachelbel","tag":"classical","duration":176,"notes":138,"stars":2,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":132,"stars":2,"difficulty":0.16},{"id":"2voice","name":"Two-Voice","notes":138,"stars":2,"difficulty":0.16},{"id":"full","name":"Full","notes":138,"stars":2,"difficulty":0.16}]},{"id":"entertainer","title":"The Entertainer","composer":"Scott Joplin","tag":"ragtime","duration":253,"notes":2621,"stars":4,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":347,"stars":2,"difficulty":0.23},{"id":"2voice","name":"Two-Voice","notes":388,"stars":2,"difficulty":0.29},{"id":"full","name":"Full","notes":2621,"stars":4,"difficulty":0.82}]},{"id":"maple-leaf-rag","title":"Maple Leaf Rag","composer":"Scott Joplin","tag":"ragtime","duration":144,"notes":2566,"stars":4,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":162,"stars":2,"difficulty":0.24},{"id":"2voice","name":"Two-Voice","notes":387,"stars":3,"difficulty":0.39},{"id":"full","name":"Full","notes":2566,"stars":4,"difficulty":0.82}]},{"id":"easy-winners","title":"The Easy Winners","composer":"Scott Joplin","tag":"ragtime","duration":304,"notes":2524,"stars":4,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":334,"stars":2,"difficulty":0.22},{"id":"2voice","name":"Two-Voice","notes":411,"stars":2,"difficulty":0.29},{"id":"full","name":"Full","notes":2524,"stars":4,"difficulty":0.79}]},{"id":"solace","title":"Solace","composer":"Scott Joplin","tag":"ragtime","duration":246,"notes":2164,"stars":4,"handsFromSource":true,"tiers":[{"id":"core","name":"Core","notes":324,"stars":2,"difficulty":0.24},{"id":"2voice","name":"Two-Voice","notes":364,"stars":2,"difficulty":0.3},{"id":"full","name":"Full","notes":2164,"stars":4,"difficulty":0.74}]},{"id":"lib:baa-baa","title":"Baa Baa Black Sheep","composer":"Traditional","tag":"trad","duration":26,"notes":90,"stars":3,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":42,"stars":2,"difficulty":0.15},{"id":"2voice","name":"Two-Voice","notes":49,"stars":2,"difficulty":0.23},{"id":"full","name":"Full","notes":90,"stars":3,"difficulty":0.52}]},{"id":"lib:ode-to-joy","title":"Ode to Joy","composer":"Traditional","tag":"beethoven","duration":16,"notes":86,"stars":4,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":30,"stars":2,"difficulty":0.15},{"id":"2voice","name":"Two-Voice","notes":37,"stars":2,"difficulty":0.25},{"id":"full","name":"Full","notes":86,"stars":4,"difficulty":0.66}]},{"id":"lib:jingle-bells","title":"Jingle Bells","composer":"Traditional","tag":"trad","duration":16,"notes":65,"stars":4,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":25,"stars":2,"difficulty":0.15},{"id":"2voice","name":"Two-Voice","notes":31,"stars":2,"difficulty":0.25},{"id":"full","name":"Full","notes":65,"stars":4,"difficulty":0.64}]},{"id":"lib:fur-elise","title":"Für Elise","composer":"Traditional","tag":"beethoven","duration":13,"notes":42,"stars":3,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":26,"stars":2,"difficulty":0.21},{"id":"2voice","name":"Two-Voice","notes":29,"stars":2,"difficulty":0.26},{"id":"full","name":"Full","notes":42,"stars":3,"difficulty":0.45}]},{"id":"lib:frere-jacques","title":"Frère Jacques","composer":"Traditional","tag":"trad","duration":18,"notes":88,"stars":4,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":32,"stars":2,"difficulty":0.19},{"id":"2voice","name":"Two-Voice","notes":37,"stars":2,"difficulty":0.27},{"id":"full","name":"Full","notes":88,"stars":4,"difficulty":0.67}]},{"id":"lib:silent-night","title":"Silent Night","composer":"Traditional","tag":"carol","duration":43,"notes":138,"stars":3,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":39,"stars":2,"difficulty":0.17},{"id":"2voice","name":"Two-Voice","notes":63,"stars":2,"difficulty":0.29},{"id":"full","name":"Full","notes":138,"stars":3,"difficulty":0.61}]},{"id":"lib:we-wish-you","title":"We Wish You a Merry Christmas","composer":"Traditional","tag":"carol","duration":15,"notes":79,"stars":4,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":31,"stars":2,"difficulty":0.18},{"id":"2voice","name":"Two-Voice","notes":37,"stars":2,"difficulty":0.28},{"id":"full","name":"Full","notes":79,"stars":4,"difficulty":0.66}]},{"id":"lib:deck-the-halls","title":"Deck the Halls","composer":"Traditional","tag":"carol","duration":15,"notes":66,"stars":3,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":29,"stars":2,"difficulty":0.16},{"id":"2voice","name":"Two-Voice","notes":38,"stars":2,"difficulty":0.26},{"id":"full","name":"Full","notes":66,"stars":3,"difficulty":0.55}]},{"id":"lib:amazing-grace","title":"Amazing Grace","composer":"Traditional","tag":"folk","duration":34,"notes":94,"stars":3,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":33,"stars":2,"difficulty":0.14},{"id":"2voice","name":"Two-Voice","notes":42,"stars":2,"difficulty":0.25},{"id":"full","name":"Full","notes":94,"stars":3,"difficulty":0.54}]},{"id":"lib:auld-lang-syne","title":"Auld Lang Syne","composer":"Traditional","tag":"folk","duration":20,"notes":76,"stars":3,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":28,"stars":2,"difficulty":0.16},{"id":"2voice","name":"Two-Voice","notes":31,"stars":2,"difficulty":0.23},{"id":"full","name":"Full","notes":76,"stars":3,"difficulty":0.61}]},{"id":"lib:greensleeves","title":"Greensleeves","composer":"Traditional","tag":"folk","duration":29,"notes":99,"stars":3,"handsFromSource":false,"tiers":[{"id":"core","name":"Core","notes":35,"stars":2,"difficulty":0.15},{"id":"2voice","name":"Two-Voice","notes":48,"stars":2,"difficulty":0.27},{"id":"full","name":"Full","notes":99,"stars":3,"difficulty":0.58}]}];
+const resultsEl=document.getElementById('results'), countEl=document.getElementById('count'), q=document.getElementById('q');
+let minStars=0, remote=[], remoteFor='', searching=false, timer=null, token=0;
+const stars=n=>'★'.repeat(n)+'☆'.repeat(5-n);
+// remote titles are user-generated -> escape before injecting.
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// A pre-charted catalog song. Difficulty shows as an overall star rating only —
+// the Easy/Medium/Hard version tiers are retired (levels are the difficulty, set in-game).
+function card(s){
+  const hands=s.handsFromSource?'<span class="badge">HANDS</span>':'';
+  const tag=s.tag?`<span class="tag">${s.tag}</span>`:'';
+  return `<div class="card">
+    <div><div class="ctitle">${s.title}</div><div class="ccomp">${s.composer}</div></div>
+    <div class="meta"><span class="stars">${stars(s.stars)}</span><span>${Math.floor(s.duration/60)}:${String(s.duration%60).padStart(2,'0')}</span>${tag}${hands}</div>
+    <a class="play" href="cascada.html?song=${encodeURIComponent(s.id)}">▶ PLAY</a>
+  </div>`;
+}
+// A searched song (charted live on open — no pre-computed stars).
+function songCard(s){
+  return `<div class="card">
+    <div><div class="ctitle">${esc(s.title)}</div></div>
+    <div class="meta"><span>${(s.notes||0).toLocaleString()} notes</span></div>
+    <a class="play" href="cascada.html?song=os:${encodeURIComponent(s.id)}">▶ PLAY</a>
+  </div>`;
+}
+function section(title, html){ return `<div class="sechead">${title}</div><div class="grid">${html}</div>`; }
+
+function render(){
+  const term=q.value.trim();
+  const local=CATALOG.filter(s=> s.stars>=minStars &&
+    (!term || (s.title+' '+s.composer).toLowerCase().includes(term.toLowerCase())));
+
+  if(!term){
+    countEl.textContent = local.length+(local.length===1?' song':' songs');
+    resultsEl.innerHTML = local.length ? `<div class="grid">${local.map(card).join('')}</div>`
+      : '<div class="empty">Type a song name above to search.</div>';
+    return;
+  }
+
+  // `remote` holds the LAST non-empty result set (for `remoteFor`). We keep it on
+  // screen while you keep typing — an intermediate query that OnlineSequencer has
+  // no match for (its search is whole-phrase; "when we" finds nothing) must not
+  // blank the grid out from under you.
+  const stale = remote.length && remoteFor && remoteFor!==term;
+  let html='';
+  if(local.length) html += section('In your library', local.map(card).join(''));
+  if(remote.length) html += section(local.length?'More results':(stale?`Results for “${esc(remoteFor)}”`:'Results'), remote.map(songCard).join(''));
+
+  const bits=[];
+  if(local.length) bits.push(local.length+' in library');
+  if(remote.length) bits.push(remote.length+(stale?` for “${esc(remoteFor)}”`:' found'));
+  if(searching) bits.push('<span class="spin"></span>searching…');
+  countEl.innerHTML = bits.join(' · ') || (searching ? '<span class="spin"></span>searching…' : '');
+
+  if(!html){
+    resultsEl.innerHTML = searching
+      ? '<div class="empty"><span class="spin"></span>Searching… the first search can take a moment.</div>'
+      : '<div class="empty">Nothing found yet — keep typing the song title.</div>';
+  } else resultsEl.innerHTML = html;
+}
+
+function doSearch(){
+  const term=q.value.trim();
+  clearTimeout(timer);
+  if(!term){ remote=[]; remoteFor=''; searching=false; render(); return; }
+  searching=true; render();
+  const tok=++token;
+  timer=setTimeout(()=>{
+    fetch('/api/search?q='+encodeURIComponent(term)).then(r=>r.json()).then(d=>{
+      if(tok!==token) return;                       // ignore stale responses
+      const res=(d && d.results) || [];
+      if(res.length){ remote=res; remoteFor=term; } // only REPLACE on a hit — a zero-result query keeps the last good results
+      searching=false; render();
+    }).catch(()=>{ if(tok===token){ searching=false; render(); } });
+  }, 350);
+}
+
+document.getElementById('fil').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
+  document.querySelectorAll('#fil button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  minStars=+b.dataset.min; render(); });
+q.addEventListener('input', doSearch);
+
+// UPLOAD MIDI — stash the file (base64) and open the game, which reads it back.
+document.getElementById('uploadBtn').addEventListener('click',()=>document.getElementById('uploadInput').click());
+document.getElementById('uploadInput').addEventListener('change',e=>{
+  const f=e.target.files && e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{
+    const bytes=new Uint8Array(rd.result); let bin='';
+    for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+    sessionStorage.setItem('cascada_upload', JSON.stringify({ name:f.name, data:btoa(bin) }));
+    location.href='cascada.html?upload=1';
+  }catch(err){ alert('Could not read that MIDI file.'); } };
+  rd.onerror=()=>alert('Could not read that file.');
+  rd.readAsArrayBuffer(f);
+  e.target.value='';
+});
+render();
+</script>
+<script data-goatcounter="https://playcascada.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</body>
+</html>
