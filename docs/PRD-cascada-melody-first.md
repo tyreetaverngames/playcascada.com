@@ -73,22 +73,23 @@ Spot checks of the extracted line, by ear against the scores:
 
 No page errors. L5+ charts are unchanged apart from salience ordering.
 
-## Phase 2 — the remaining L0–L2 bottleneck (not built yet)
+## Phase 2 — Note Maps, chosen automatically (shipped Nov 17)
 
-At L0–L2 the stream now holds the full melody, but **about half of it is still dropped by the key layout, not by the extractor.** The measurements for Für Elise at L2:
+**Correction to the numbers above.** The Phase 1 table was measured under browser automation, which boots Cascada with Note Maps off. Real players get Note Maps on by default, so that table understates what they see. Measured with Note Maps on, the melody-first change lifted the share of the top line you play at the default level (L2) from a median of 27% to 68% across the 13 built-in songs (L3: 29% to 73%, L4: 29% to 76%).
 
-- The ergonomic layout (`ergonomicSliceList`) maps each hand's 4–5 keys to **specific pitches**, then shifts them **only by octaves** (`step: 12`).
-- The hands are split at the median pitch with disjoint anchor ranges. For Für Elise, the right hand's lowest anchor is D5 and the left hand's top key is E4. **No hand can reach F4–C♯5**, which is where most of the tune lives.
-- Result: 192 of 429 stream notes are skipped by `solvePlan` because no candidate split exists.
+**The remaining problem was the opposite one.** Note Maps (the page stacks in `resolvePagesPlan`) solve the reach gap at low levels, but at L4 and up they sometimes cost melody: with them on at L5, Gymnopédie dropped to 79% of the melody, Pathétique to 87% and The Entertainer to 90%.
 
-Proposed fix, in order:
-1. **Build the low-level layout from the melody, not the whole stream.** At `core`, size the right hand's key set to the melody's most common pitches within a phrase, and put the hand boundary below the melody's range, not at the median.
-2. **Shift by phrase, not by octave.** Let a slice re-anchor by any interval at phrase boundaries (rests ≥ 0.5s), with the existing shift-cost model. Manual Tab/Shift keys can stay at octaves.
-3. **Melody-aware solver:** when `solvePlan` has to shed a note, never shed `isMelody` while any non-melody note is left in the event (salience already does this; just add a test).
-4. **Target:** at L2, ≥ 85% of melody notes playable on every built-in song.
+**The rule now:** for every song and level, Cascada charts the song both ways and uses Note Maps only when they let you play more of the melody. A tie goes to free octave shifts.
+
+- Lives in `resolvePlan`, so it covers built-in songs, library songs, uploaded MIDI and seeds.
+- The choice is remembered per song + level + stream; `Song.noteMapsAuto` records what was chosen and both melody counts.
+- Maps you shaped yourself (map regions for the song, or note-map edits at that level) always stay in use.
+- Ticking the Teklet "Note maps" box, or `?pages=1` / `?pages=0`, is a manual choice for every song and turns auto off (`CascadaConfig.noteMapsAuto = false`).
+
+**Result, 13 songs × levels 0–6 (91 charts):** auto matched the better of the two options in all 91. Note Maps were chosen in 60 and free shifts in 31. At L0–L2, 10 of 13 songs give you 88–100% of the melody; Fantaisie-Impromptu, Mozart K545 and Maple Leaf Rag give 51–59% because the tune is thinned for speed at those levels. At L3 and up every song gives 96–100%. The slowest level change took 0.29s.
 
 ## Other follow-ups
-- **Canon in D:** the built-in MIDI is 138 notes, one every ~2s. Replace it with a real arrangement (Mutopia has one).
+- **Canon in D:** removed from the built-in songs (the file was a 138-note sketch). Add a real arrangement later if wanted.
 - **Tuning pass:** play-test `MELODY_TUNING.coreMinIOI` (0.13s) on Fantaisie-Impromptu. If L1 still feels too fast, try 0.18s for L0–L1 only.
 - **Uploads:** the parse-confidence dialog still reads `derived-core`, which is unchanged. Consider adding "melody confidence" (path cost per note) to that dialog.
 
