@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>/* Phones go to the pocket edition (mobile.html). ?full=1 opts back into the desktop game for this tab. */
+(function(){try{var q=location.search;if(/[?&]full=1/.test(q)){sessionStorage.setItem('cascadaFull','1');return;}
+if(sessionStorage.getItem('cascadaFull'))return;
+var phone=window.matchMedia&&matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=600;
+if(phone)location.replace('/mobile.html');}catch(e){}})();</script>
 <title>Cascada – Play Piano on Your Computer Keyboard | Free Piano Rhythm Game</title>
 <meta name="description" content="Play real piano songs on your QWERTY keyboard. Cascada is a free virtual piano rhythm game: letters fall, you press them, and you’re playing Für Elise, Clair de Lune and more. No piano needed.">
 <meta name="keywords" content="virtual piano, play piano on computer keyboard, piano game, piano rhythm game, online piano, learn piano songs, QWERTY piano, typing piano">
