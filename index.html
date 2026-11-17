@@ -1043,7 +1043,7 @@ const TIER_TARGETS = { core: 0.16, two: 0.42 };   // 'full' = untouched (no targ
 
 // Which derived stream a level plays. Low levels (few keys/fingers) get the
 // sparse stream so the finger cap is satisfiable; higher levels get the full song.
-const LEVEL_STREAM = { 0:'core', 1:'core', 2:'core', 3:'2voice', 4:'2voice', 5:'full', 6:'full', 7:'full' };
+const LEVEL_STREAM = { 0:'core', 1:'core', 2:'core', 3:'melbass', 4:'2voice', 5:'full', 6:'full', 7:'full' };
 function streamForLevel(levelOrId){
   const id = (levelOrId && typeof levelOrId==='object') ? levelOrId.id : levelOrId;
   return LEVEL_STREAM[id] || 'full';
@@ -2700,6 +2700,152 @@ function detectBaked(parsed){
   return out;
 }
 
+// ── Stage 5b · MELODY EXTRACTION (melody-first charting) ──
+// The player's line is THE TUNE, whole. Instead of "highest voice, then thin it",
+// a Viterbi path over onset clusters picks at most one note per onset (or rests),
+// trading four costs: (1) not the top of its chord, (2) under a still-ringing
+// higher note (a left-hand note between melody notes — the Für Elise bug),
+// (3) a big leap from the previous melody note, (4) low register / left-hand
+// staff. Rests have a fixed price, so an accompaniment note far below the line
+// is skipped rather than handed to the player. A file's own melody/lead/vocal
+// part always wins. Returns the melody notes (refs into `notes`), sorted.
+const MELODY_TUNING = {
+  clusterSec: 0.035,     // onsets this close are one chord
+  lookback: 10,          // how many clusters a rest may span in one DP step
+  restCost: 2.2,         // price of a cluster with no melody note
+  rankCost: [0, 2.4, 3.8, 5.0],  // top note of the chord is cheapest
+  underCost: 2.6,        // a higher note (≥3 st above) is still ringing
+  leapFree: 2, leapPerSt: 0.13, octaveJump: 1.1,
+  lowFloor: 57, lowPerSt: 0.16,  // below A3 gets expensive
+  leftHandCost: 1.6, staffSwitchCost: 0.6,
+  reentryCost: 0.8,      // picking the line back up after a long rest
+  coreMinIOI: 0.13,      // L0–L2 speed cap: no two of your notes closer than this (s)
+  maxGapSec: 4.0, fillEverySec: 1.5,  // bridge melody rests longer than this
+};
+function extractMelody(notes, parts){
+  if(!notes || !notes.length) return [];
+  // 0 · a part the file itself names as the tune
+  for(const p of (parts||[])){
+    if(/melody|lead|vocal|voice|solo|tune/i.test((p.name||'')+' '+(p.trackName||'')) && p.notes && p.notes.length>=8){
+      const ids=new Set(p.notes.map(n=>n.midi+'@'+n.startSec.toFixed(3)));
+      const hit=notes.filter(n=>ids.has(n.midi+'@'+n.startSec.toFixed(3)));
+      if(hit.length>=8) return hit.sort((a,b)=>a.startSec-b.startSec);
+    }
+  }
+  const T=MELODY_TUNING;
+  const sorted=[...notes].sort((a,b)=>a.startSec-b.startSec || b.midi-a.midi);
+  // 1 · onset clusters, each with ≤4 candidates (highest first, one per pitch)
+  const clusters=[];
+  for(const n of sorted){
+    const c=clusters[clusters.length-1];
+    if(c && n.startSec-c.t<=T.clusterSec) c.all.push(n); else clusters.push({t:n.startSec, all:[n]});
+  }
+  const hasHands=sorted.some(n=>n.srcHand);
+  const ringing=[];                       // notes still sounding, for the "under" test
+  for(const c of clusters){
+    for(let i=ringing.length-1;i>=0;i--){ const r=ringing[i]; if(r.startSec+r.durationSec<=c.t+0.05) ringing.splice(i,1); }
+    // the highest note still ringing with real time left (a held melody note)
+    let ringHi=-1;
+    for(const r of ringing){ const left=r.startSec+r.durationSec-c.t; if(left>0.12 && left>0.3*r.durationSec) ringHi=Math.max(ringHi,r.midi); }
+    const seen=new Set(); c.cand=[];
+    for(const n of c.all.slice().sort((a,b)=>b.midi-a.midi)){ if(seen.has(n.midi)) continue; seen.add(n.midi); c.cand.push(n); if(c.cand.length>=4) break; }
+    c.emit=c.cand.map((n,rank)=>{
+      let e=T.rankCost[Math.min(rank,T.rankCost.length-1)];
+      if(ringHi>=n.midi+3) e+=T.underCost;
+      if(n.midi<T.lowFloor) e+=(T.lowFloor-n.midi)*T.lowPerSt;
+      if(hasHands && n.srcHand==='left') e+=T.leftHandCost;
+      return e;
+    });
+    for(const n of c.all) ringing.push(n);
+  }
+  const trans=(a,b)=>{
+    const d=Math.abs(a.midi-b.midi);
+    const gap=b.startSec-a.startSec;
+    const soften=gap>1.5?0.5:1;          // phrase boundary: leaps are cheaper
+    let t=Math.max(0,d-T.leapFree)*T.leapPerSt*soften;
+    if(d>12) t+=T.octaveJump*soften;
+    if(hasHands && a.srcHand && b.srcHand && a.srcHand!==b.srcHand) t+=T.staffSwitchCost;
+    return t;
+  };
+  // 2 · Viterbi: dp[i][k] = best cost of a melody ending on cluster i, candidate k
+  const M=clusters.length;
+  const dp=clusters.map(c=>new Float64Array(c.cand.length));
+  const back=clusters.map(c=>c.cand.map(()=>null));
+  // restDp[i] = best cost of a path whose clusters i (and possibly more before) are rests
+  // — it forgets the last pitch, so long rests (a left-hand-only bar) never force a
+  // bad note just to keep the line connected. restArg remembers where it came from.
+  const restDp=new Float64Array(M), restArg=new Array(M).fill(null);
+  for(let i=0;i<M;i++){
+    const ci=clusters[i];
+    for(let k=0;k<ci.cand.length;k++){
+      let best=i*T.restCost, arg=null;                         // nothing before: all rests
+      if(i>0 && restDp[i-1]+T.reentryCost<best){ best=restDp[i-1]+T.reentryCost; arg=['r',i-1]; }
+      for(let j=Math.max(0,i-T.lookback);j<i;j++){
+        const cj=clusters[j], rests=(i-j-1)*T.restCost;
+        for(let q=0;q<cj.cand.length;q++){
+          const v=dp[j][q]+rests+trans(cj.cand[q],ci.cand[k]);
+          if(v<best){ best=v; arg=[j,q]; }
+        }
+      }
+      dp[i][k]=best+ci.emit[k]; back[i][k]=arg;
+    }
+    // cluster i is a rest
+    let rb=(i>0?restDp[i-1]:0), ra=(i>0?['r',i-1]:null);
+    if(i>0) for(let q=0;q<clusters[i-1].cand.length;q++) if(dp[i-1][q]<rb){ rb=dp[i-1][q]; ra=[i-1,q]; }
+    restDp[i]=rb+T.restCost; restArg[i]=ra;
+  }
+  let end=null, endCost=restDp[M-1];
+  { let rb=restDp[M-1], ra=['r',M-1];
+    for(let k=0;k<clusters[M-1].cand.length;k++) if(dp[M-1][k]<rb){ rb=dp[M-1][k]; ra=[M-1,k]; }
+    end=ra; endCost=rb; }
+  const out=[];
+  while(end){
+    if(end[0]==='r'){ end=restArg[end[1]]; continue; }
+    out.push(clusters[end[0]].cand[end[1]]); end=back[end[0]][end[1]];
+  }
+  return out.reverse();
+}
+// Melodies are monophonic in the player's hand: trim each melody note so it never
+// overlaps the next one (keeps one finger free), without touching the audio length.
+// Speed cap for the lowest levels: when the tune itself runs faster than a beginner
+// can track (Fantaisie-Impromptu's 16ths), keep the strongest notes so no two are
+// closer than minIOI. Everything dropped still plays (ghost), and melody stays whole
+// wherever it's slower than the cap.
+function capMelodyRate(mel, minIOI){
+  if(!(minIOI>0) || mel.length<3) return mel.slice();
+  const pri=n=>(n._metric??0.4)*2 + Math.min(1,(n.durationSec||0)/0.5) + (n._rep??0)*0.5;
+  const order=[...mel].sort((a,b)=>pri(b)-pri(a));
+  const kept=[];                          // sorted by time
+  const fits=t=>{ let lo=0,hi=kept.length; while(lo<hi){ const m=(lo+hi)>>1; if(kept[m].startSec<t) lo=m+1; else hi=m; }
+    return !(lo<kept.length && kept[lo].startSec-t<minIOI) && !(lo>0 && t-kept[lo-1].startSec<minIOI) ? lo : -1; };
+  for(const n of order){ const at=fits(n.startSec); if(at>=0) kept.splice(at,0,n); }
+  return kept;
+}
+// Never leave the player idle while the song plays: if the melody rests for more than
+// maxGap (an intro, a left-hand-only bar), lend the top note of the music in that gap
+// every ~fillEvery seconds. These are NOT tagged melody.
+function fillMelodyGaps(line, all, maxGap, fillEvery){
+  const s=new Set(line); const out=line.slice();
+  const pool=[...all].sort((a,b)=>a.startSec-b.startSec);
+  const times=[0, ...line.map(n=>n.startSec).sort((a,b)=>a-b), Infinity];
+  const songEnd=pool.length?pool[pool.length-1].startSec:0;
+  for(let i=1;i<times.length;i++){
+    const a=times[i-1], b=Math.min(times[i], songEnd+0.01);
+    if(b-a<=maxGap) continue;
+    let nextT=a+fillEvery*0.5;
+    for(const n of pool){
+      if(n.startSec<=a+0.05 || n.startSec>=b-0.05 || s.has(n)) continue;
+      if(n.startSec<nextT) continue;
+      // the top note of that chord
+      const top=pool.filter(m=>Math.abs(m.startSec-n.startSec)<0.035).reduce((x,y)=>y.midi>x.midi?y:x);
+      if(!s.has(top)){ s.add(top); out.push(top); nextT=top.startSec+fillEvery; }
+    }
+  }
+  return out.sort((a,b)=>a.startSec-b.startSec);
+}
+// The bass line's notes that land on strong beats (metric anchors) — L3's left hand.
+function strongBeatsOnly(line){ return line.filter(n=>(n._metric??0)>0.72); }
+
 function deriveVersions(parsed){
   const base=(parsed.notes||[]).slice().sort((a,b)=>a.startSec-b.startSec);
   const durationSec = parsed.duration || (base.length? Math.max(...base.map(n=>n.startSec+n.durationSec)) : 0) || 1;
@@ -2711,20 +2857,43 @@ function deriveVersions(parsed){
   estimateMeterGrid(base);
   const voices=separateVoices(base);
   scoreNotes(base, voices);
-  const {lead, bass}=selectLines(voices);
-  // tier target difficulties (ordinal score in [0,1]): Core = clearly easy,
-  // Two-Voice = moderate; Full = the whole song untouched.
-  // Thinning targets come from the tuning config (src/content/tuning.js), not hardcoded —
-  // the tiers are retired as a player choice; these just feed the per-level stream.
-  const _tt = (typeof TIER_TARGETS!=='undefined') ? TIER_TARGETS : { core:0.16, two:0.42 };
-  const core = thinToDifficulty(lead, _tt.core, durationSec, { coveragePool: base });
-  const two  = thinToDifficulty([...lead, ...bass].sort((a,b)=>a.startSec-b.startSec), _tt.two, durationSec, { coveragePool: base });
+  const lines=selectLines(voices);
+  // MELODY-FIRST CHARTING. The player always gets the tune (the Viterbi melody line);
+  // levels only ADD accompaniment on top of it — they never thin the tune itself
+  // (except a speed cap at L0–L2 where the tune outruns a beginner).
+  //   core   (L0–L2): the melody, speed-capped, with long rests bridged
+  //   melbass(L3)   : the whole melody + the bass line's strong-beat notes
+  //   2voice (L4)   : the whole melody + the whole bass line + every strong-beat chord tone
+  //   full   (L5+)  : everything
+  const melody=extractMelody(base, parsed.parts);
+  const melSet=new Set(melody);
+  for(const n of base){ n.isMelody=melSet.has(n); delete n.voice; }
+  // Melody notes outrank every accompaniment note wherever the engine has to drop
+  // something (finger cap, slice reach, key collisions) — they sort by salience.
+  for(const n of base){ const s0=(n.salience==null?0.5:n.salience); n.salience = n.isMelody ? 0.8+0.2*s0 : 0.8*s0; }
+  for(const n of melody) n.voice='right';
+  // the bass: the lowest separated voice, minus anything the melody claimed, never above the tune
+  let bass=lines.bass.filter(n=>!melSet.has(n));
+  if(!bass.length){
+    // single-voice fallback: per cluster, the lowest note well below the melody
+    const byT=new Map(); for(const n of base){ if(melSet.has(n)) continue; const k=Math.round(n.startSec/0.035); const c=byT.get(k); if(!c||n.midi<c.midi) byT.set(k,n); }
+    bass=[...byT.values()].sort((a,b)=>a.startSec-b.startSec);
+  }
+  bass=bass.filter(b=>{ const m=melody.find(l=> l.startSec<=b.startSec+0.03 && l.startSec+l.durationSec>b.startSec ); return !m || b.midi<=m.midi-3; });
+  for(const n of bass) n.voice='left';
+  const byTime=(a,b)=>a.startSec-b.startSec;
+  const uniq=arr=>[...new Set(arr)].sort(byTime);
+  const MT=MELODY_TUNING;
+  const core   = fillMelodyGaps(capMelodyRate(melody, MT.coreMinIOI), base, MT.maxGapSec, MT.fillEverySec);
+  const melbass= fillMelodyGaps(uniq([...melody, ...strongBeatsOnly(bass)]), base, MT.maxGapSec, MT.fillEverySec);
+  const two    = fillMelodyGaps(uniq([...melody, ...bass, ...base.filter(n=>(n._metric??0)>0.72)]), base, MT.maxGapSec, MT.fillEverySec);
 
   // Neutral stream names (no Easy/Medium/Hard tier labels — levels are the only
   // difficulty the player sees). ids stay stable for level→stream mapping.
   let versions=[];
-  if(core.length) versions.push({ id:'core', name:'Core', kind:'derived-core', notes:core });
-  if(two.length && two.length>core.length) versions.push({ id:'2voice', name:'Two-Voice', kind:'derived-2voice', notes:two });
+  if(core.length) versions.push({ id:'core', name:'Melody', kind:'derived-core', notes:core });
+  if(melbass.length) versions.push({ id:'melbass', name:'Melody + Bass beats', kind:'derived-melbass', notes:melbass });
+  if(two.length) versions.push({ id:'2voice', name:'Melody + Bass + Chords', kind:'derived-2voice', notes:two });
   versions.push({ id:'full', name:'Full', kind:'full', notes:base });
   versions.push(...detectBaked(parsed));
 
@@ -4515,6 +4684,9 @@ function versionForCurrentLevel(versions){
   const ergo = (typeof CascadaConfig!=='undefined' && CascadaConfig.mapper==='ergonomic');
   if(!ergo) return versions[0];
   const id = (typeof streamForLevel==='function' && CascadaConfig.level) ? streamForLevel(CascadaConfig.level.id) : 'full';
+  const ladder=['core','melbass','2voice','full'];
+  const want=ladder.indexOf(id);
+  for(let i=want;i>=0;i--){ const v=versions.find(x=>x.id===ladder[i]); if(v) return v; }
   return versions.find(v=>v.id===id) || versions.find(v=>v.id==='full') || versions[versions.length-1];
 }
 function selectVersion(id){
