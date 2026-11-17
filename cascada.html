@@ -545,7 +545,7 @@ input[type=color].swatch::-webkit-color-swatch{border:none;border-radius:3px;}
         <button data-mode="play" class="sel">PLAY</button>
       </div>
       <button class="tk" id="mapBtn" title="Show the keyboard map">&#9000; MAP · keyboard</button>
-      <label class="chk" title="Reuse a small set of maps (segmentMap page stacks) instead of free octave shifts"><input type="checkbox" id="pagesChk"> Page stacks · reuse maps</label>
+      <label class="chk" title="Note maps switch on by themselves for any song and level where they let you play more of the melody. Tick or untick this to set it yourself for every song."><input type="checkbox" id="pagesChk"> Note maps · auto when they add melody</label>
     </div>
     <div class="tkSection" data-tab="PLAY">
       <div class="tkLabel">ASSISTS · the easy buttons</div>
@@ -3316,7 +3316,43 @@ function solvePlan(notes){
 
 /* Run the solver on whatever notes are currently "yours" and write the
    slice/key labels + the anchor timeline + shift cues back onto Song. */
+/* NOTE MAPS · AUTO. Charts the song both ways — free octave shifts and note maps (page
+   stacks) — and keeps note maps only when they give the player MORE of the melody. Runs
+   for every song (built-in, library, uploaded MIDI, seeds) at every level, because every
+   chart goes through resolvePlan. The choice is remembered per song + level + stream, so
+   editing notes never flips it mid-edit. Maps you shaped yourself (map regions for this
+   song, or note-map edits at this level) always stay in use. */
+const _nmAutoChoice = new Map();
+function melodyPlayed(){ let c=0; for(const n of (Song.activeNotes||[])) if(n.isMelody && !n.skip) c++; return c; }
 function resolvePlan(){
+  const cfg=(typeof CascadaConfig!=='undefined')?CascadaConfig:null;
+  if(!cfg || cfg.mapper!=='ergonomic' || cfg.noteMapsAuto===false || !Song.notes || !Song.notes.length || !Song.version) return _resolvePlanOnce();
+  const lvl=(cfg.level && cfg.level.id!=null)?cfg.level.id:0, before=!!cfg.pageStacks;
+  let want;
+  try{
+    const sched=(cfg.mapSchedules||{})[(typeof scheduleKey==='function')?scheduleKey():''];
+    const edited=Object.keys(cfg.noteMapEdits||{}).some(k=>k.indexOf(lvl+':')===0);
+    if((sched && Object.keys(sched).length) || edited) want=true;
+  }catch(e){}
+  const key=(Song.fp||Song.title||'')+'|'+lvl+'|'+Song.version.id;
+  let rec = (want===undefined) ? _nmAutoChoice.get(key) : { on:true, pinned:true };
+  if(rec){ want=rec.on; cfg.pageStacks=want; _resolvePlanOnce(); }
+  else {
+    // chart the likely loser first, so the usual winner is already charted when we stop
+    const onLast = lvl<=4;
+    let on=-1, off=-1;
+    const run=(flag)=>{ cfg.pageStacks=flag; try{ _resolvePlanOnce(); return melodyPlayed(); }catch(e){ return -1; } };
+    if(onLast){ off=run(false); on=run(true); } else { on=run(true); off=run(false); }
+    want = on>off;
+    if(cfg.pageStacks!==want){ cfg.pageStacks=want; _resolvePlanOnce(); }
+    rec={ on:want, melodyWithMaps:on, melodyWithout:off };
+    _nmAutoChoice.set(key, rec);
+  }
+  Song.noteMapsAuto=rec;   // what was chosen for this song + level, and why
+  try{ if(typeof document!=='undefined'){ const el=document.getElementById('pagesChk'); if(el) el.checked=want; }
+       if(before!==want && typeof buildNoteMapList==='function') buildNoteMapList(); }catch(e){}
+}
+function _resolvePlanOnce(){
   for(const n of Song.notes){ n.hand=null; n.slice=null; n.key=null; n.skip=false; n.backing=false; n.handBlocked=false; }
   const ver = Song.version;
   const active = (ver? ver.notes : Song.notes).slice().sort((a,b)=>a.startSec-b.startSec);
@@ -7703,13 +7739,13 @@ document.querySelectorAll('#modeSeg button').forEach(b=>{
 if($('pagesChk')) $('pagesChk').onchange=()=>{
   mapperChosen=true;
   const on=$('pagesChk').checked;
-  const c=liveConfig(); c.pageStacks=on; if(on) c.mapper='ergonomic'; loadConfig(c);
+  const c=liveConfig(); c.pageStacks=on; c.noteMapsAuto=false; if(on) c.mapper='ergonomic'; loadConfig(c);   // your choice: auto off
   if(typeof versionForCurrentLevel==='function' && Song.versions && Song.versions.length) Song.version=versionForCurrentLevel(Song.versions);
   if(typeof resolvePlan==='function' && Song.notes && Song.notes.length) resolvePlan();
   if(typeof draw==='function') draw();
   if(typeof persistSettings==='function') persistSettings(true);
   if(typeof syncPresetUI==='function') syncPresetUI();
-  flash(on?'Page stacks ON · reusing a small set of maps (§4.4)':'Page stacks OFF · free octave shifts');
+  flash(on?'Note maps ON for every song (auto is off)':'Note maps OFF for every song (auto is off)');
 };
 
 /* Cascada Studio (Teklet): show / download the current song's chart as plain text — the
@@ -7928,6 +7964,7 @@ function _settingsSnapshot(){
     level: (typeof CascadaConfig!=='undefined' && CascadaConfig.level) ? CascadaConfig.level.id : undefined,
     mapperChosen: mapperChosen,
     pageStacks: (typeof CascadaConfig!=='undefined') ? !!CascadaConfig.pageStacks : false,
+    noteMapsAuto: (typeof CascadaConfig!=='undefined') ? CascadaConfig.noteMapsAuto!==false : true,
     noteMapEdits: (typeof CascadaConfig!=='undefined' && CascadaConfig.noteMapEdits) ? CascadaConfig.noteMapEdits : undefined,
     mapSchedules: (typeof CascadaConfig!=='undefined' && CascadaConfig.mapSchedules) ? CascadaConfig.mapSchedules : undefined,
     songEdits: (typeof CascadaConfig!=='undefined' && CascadaConfig.songEdits) ? CascadaConfig.songEdits : undefined,
@@ -8023,6 +8060,7 @@ function applyPersistedSettings(){
   if((s.mapperChosen || !_auto) && s.mapper==='ergonomic'){
     const c=liveConfig(); c.mapper='ergonomic'; if(Number.isInteger(s.level)) c.level=s.level;
     if(typeof s.pageStacks==='boolean') c.pageStacks=s.pageStacks;
+    if(typeof s.noteMapsAuto==='boolean') c.noteMapsAuto=s.noteMapsAuto;
     loadConfig(c);
     if($('pagesChk')) $('pagesChk').checked = !!s.pageStacks;
     if(typeof applyErgonomicLayout==='function') applyErgonomicLayout(false);
@@ -9954,6 +9992,10 @@ const DEFAULT_CONFIG = {
   // (segmentMap per-hand page stacks — minimise/reuse a small set of maps). A/B flag,
   // ergonomic-only, opt-in via ?pages=1 or the Teklet. Octave path stays untouched.
   pageStacks: false,
+  // NOTE MAPS · AUTO: per song + level, note maps are used only when they let the player
+  // play MORE of the melody than free octave shifts (decided in resolvePlan). Ticking the
+  // Teklet box or ?pages=1/0 is a manual choice and turns auto off.
+  noteMapsAuto: true,
   // Per-note-map key→note EDITS (the Teklet note-map editor). Keyed by
   // "<levelId>:<hand>:<anchor>"; value is { computerKey: offsetFromAnchor }. Applied in
   // resolvePagesPlan so a specific note map can reassign which note each key plays,
@@ -10164,6 +10206,7 @@ function loadConfig(partial){
       if('level' in partial) c.level = validateLevel(partial.level);
       if(partial.mapper === 'ergonomic' || partial.mapper === 'legacy') c.mapper = partial.mapper;
       if(typeof partial.pageStacks === 'boolean') c.pageStacks = partial.pageStacks;
+      if(typeof partial.noteMapsAuto === 'boolean') c.noteMapsAuto = partial.noteMapsAuto;
       // note-map edits: { "lvl:hand:anchor": { key: offset(int) } } — validate shape, drop garbage.
       if(partial.noteMapEdits && typeof partial.noteMapEdits === 'object'){
         const out={};
@@ -10441,6 +10484,7 @@ function mergeProfile(loaded){
       if(Number.isInteger(s.level) && s.level>=0 && s.level<=7) p.settings.level=s.level;
       if(typeof s.mapperChosen==='boolean') p.settings.mapperChosen=s.mapperChosen;
       if(typeof s.pageStacks==='boolean') p.settings.pageStacks=s.pageStacks;
+      if(typeof s.noteMapsAuto==='boolean') p.settings.noteMapsAuto=s.noteMapsAuto;
       if(s.noteMapEdits && typeof s.noteMapEdits==='object') p.settings.noteMapEdits=s.noteMapEdits;
       if(s.mapSchedules && typeof s.mapSchedules==='object') p.settings.mapSchedules=s.mapSchedules;
       if(s.songEdits && typeof s.songEdits==='object') p.settings.songEdits=s.songEdits;
@@ -11316,7 +11360,7 @@ try{ const p=new URLSearchParams(location.search||'');
   if(p.get('ergo')==='1' || p.get('ergo')==='0' || p.has('level') || p.has('pages')){
     const c=(typeof liveConfig==='function')?liveConfig():{};
     if(p.get('ergo')==='1') c.mapper='ergonomic'; else if(p.get('ergo')==='0') c.mapper='legacy';
-    if(p.get('pages')==='1'){ c.mapper='ergonomic'; c.pageStacks=true; } else if(p.get('pages')==='0') c.pageStacks=false;
+    if(p.get('pages')==='1'){ c.mapper='ergonomic'; c.pageStacks=true; c.noteMapsAuto=false; } else if(p.get('pages')==='0'){ c.pageStacks=false; c.noteMapsAuto=false; }
     if(p.has('level')) c.level=parseInt(p.get('level'),10);
     loadConfig(c);
   }
